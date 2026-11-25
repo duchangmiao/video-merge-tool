@@ -4,7 +4,7 @@ VideoMergeQSV —— 多视频合并核心模块（Windows，多显卡自适应�
 
 策略（以第一个视频为参考）：
   1. ffprobe 读取每个视频的视频流/音频流参数；
-  2. 参考格式 = 第一个视频的编码、分辨率、帧率、像素格式、位深、Profile + 音频编码/Profile/采样率/声道；
+  2. 参考格式 = 第一个视频的编码、分辨率、帧率、像素格式、位深、Profile、音频编码/采样率/声道；
   3. 逐段判定：
        - copy       : 视频与音频全部一致 -> 流拷贝重封装，不重编码（最快）
        - audio_fix  : 视频一致、音频不一致 -> 视频拷贝，音频转 AAC 归一化
@@ -13,7 +13,7 @@ VideoMergeQSV —— 多视频合并核心模块（Windows，多显卡自适应�
   4. 编码参数默认跟随参考格式自动匹配；所有分段归一化后 concat 一次 -c copy 封装输出。
 
 CLI:
-  python merge_core.py --out out.mp4 --files a.mp4 b.mp4 c.mp4
+  python merge_core.py --out merged.mp4 --files a.mp4 b.mp4 c.mp4
 """
 
 import argparse
@@ -55,7 +55,7 @@ VALID_PROFILES = ("baseline", "main", "high", "main10")
 def which(name: str, extra_dir: str = "") -> str:
     """在用户指定目录、内置 ffmpeg\\bin 候选目录和 PATH 中查找可执行文件。"""
     exe = name + (".exe" if os.name == "nt" else "")
-    candidates = []
+    candidates: List[str] = []
     if extra_dir:
         candidates.append(os.path.join(extra_dir, exe))
     candidates += [os.path.join(d, exe) for d in FFMPEG_SEARCH_DIRS]

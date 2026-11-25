@@ -3,7 +3,7 @@
 VideoMergeQSV 图形界面（Tkinter，无第三方依赖）
 
 使用：
-  1. 把 ffmpeg.exe / ffprobe.exe 放到本目录 ffmpeg\\bin\\ 下，或加入 PATH；
+  1. 便携版已内置 ffmpeg/ffprobe，自动查找，无需手动指定目录；开发调试时可放到 ffmpeg\\bin\\ 或加入 PATH；
   2. 双击 run.bat，或 python app.py；
   3. 添加视频（顺序即拼接顺序，第 1 个为参考格式），选择输出路径，点“开始合并”。
 
@@ -17,13 +17,14 @@ from tkinter import ttk, filedialog, messagebox
 
 import merge_core
 
+APP_VERSION = "1.0.1"
 DEFAULT_FFMPEG_DIR = merge_core.DEFAULT_FFMPEG_DIR
 
 
 class App:
     def __init__(self, root: tk.Tk):
         self.root = root
-        root.title("视频合并工具 · 多显卡自适应版")
+        root.title(f"视频合并工具 · 多显卡自适应版 v{APP_VERSION}")
         root.geometry("960x780")
         root.minsize(860, 620)
 
@@ -183,13 +184,6 @@ class App:
         ttk.Entry(row, textvariable=self.temp_var).pack(side="left", fill="x", expand=True, padx=6)
         ttk.Button(row, text="浏览", command=self.pick_temp).pack(side="left")
 
-        row = ttk.Frame(opt)
-        row.pack(fill="x", padx=6, pady=2)
-        self.ffmpeg_var = tk.StringVar()
-        ttk.Label(row, text="ffmpeg:").pack(side="left")
-        ttk.Entry(row, textvariable=self.ffmpeg_var).pack(side="left", fill="x", expand=True, padx=6)
-        ttk.Button(row, text="选择", command=self.pick_ffmpeg).pack(side="left")
-
         act = ttk.Frame(self.inner)
         act.pack(fill="x", **pad)
         self.start_btn = ttk.Button(act, text="开始合并", command=self.start)
@@ -294,8 +288,7 @@ class App:
             self.ref_info = None
             self._populate_overview([], None)
             return
-        ffmpeg_dir = self.ffmpeg_var.get().strip() or DEFAULT_FFMPEG_DIR
-        ffprobe = merge_core.which("ffprobe", ffmpeg_dir)
+        ffprobe = merge_core.which("ffprobe", DEFAULT_FFMPEG_DIR)
         if not ffprobe:
             self.ref_label.config(text="未找到 ffprobe，无法读取参考格式", foreground="#c00")
             return
@@ -339,8 +332,7 @@ class App:
         if not files:
             self._populate_overview([], None)
             return
-        ffmpeg_dir = self.ffmpeg_var.get().strip() or DEFAULT_FFMPEG_DIR
-        ffprobe = merge_core.which("ffprobe", ffmpeg_dir)
+        ffprobe = merge_core.which("ffprobe", DEFAULT_FFMPEG_DIR)
         self.scanning = True
         self.ov_summary.config(text="正在扫描全部视频格式 ...", foreground="#666")
 
@@ -457,25 +449,16 @@ class App:
         if p:
             self.temp_var.set(p)
 
-    def pick_ffmpeg(self):
-        p = filedialog.askopenfilename(title="选择 ffmpeg.exe",
-                                        filetypes=[("ffmpeg", "ffmpeg.exe")])
-        if p:
-            self.ffmpeg_var.set(os.path.dirname(p))
-            self._detect_ffmpeg()
-
     def _detect_ffmpeg(self):
-        d = self.ffmpeg_var.get().strip() or DEFAULT_FFMPEG_DIR
-        ff = merge_core.which("ffmpeg", d)
-        fp = merge_core.which("ffprobe", d)
+        ff = merge_core.which("ffmpeg", DEFAULT_FFMPEG_DIR)
+        fp = merge_core.which("ffprobe", DEFAULT_FFMPEG_DIR)
         if ff and fp:
             encoders = merge_core.detect_qsv_encoders(ff)
             qsv_ok = any(e in encoders for e in ("h264_qsv", "hevc_qsv"))
-            self.ffmpeg_var.set(d)
-            tag = "已找到，QSV 编码器: " + (", ".join(encoders) if encoders else "无")
+            tag = "已找到内置 ffmpeg，QSV 编码器: " + (", ".join(encoders) if encoders else "无")
             self._log(tag + ("  [可用]" if qsv_ok else "（将使用软件编码）"))
         else:
-            self._log("未找到 ffmpeg.exe/ffprobe.exe，请放到 ffmpeg\\bin 或点“选择”指定。")
+            self._log("未找到内置 ffmpeg.exe/ffprobe.exe。")
 
     # ------------------------------------------------------------ 日志/进度
     def _log(self, msg: str):
@@ -517,9 +500,8 @@ class App:
         self.cancel_btn.config(state="normal")
         self._set_progress(0)
 
-        ffmpeg_dir = self.ffmpeg_var.get().strip() or DEFAULT_FFMPEG_DIR
         self.job = merge_core.MergeJob(
-            files=files, out_path=out, ffmpeg_dir=ffmpeg_dir,
+            files=files, out_path=out, ffmpeg_dir=DEFAULT_FFMPEG_DIR,
             encoder=self.enc_var.get(), cq=int(self.cq_var.get()),
             preset=self.preset_var.get(), audio_br=self.abr_var.get(),
             rc_mode=rc_mode, target_br=target_br, max_br=max_br,

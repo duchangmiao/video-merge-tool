@@ -1,0 +1,3 @@
+# 运行界面无需任何第三方包（仅用 Python 标准库 Tkinter）。
+# 仅打包成 exe 时需要：
+pyinstaller>=6.0
